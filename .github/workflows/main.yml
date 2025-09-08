@@ -37,7 +37,7 @@ jobs:
 
       # 5. Generate Launcher Icons
       - name: Generate Launcher Icons
-        run: flutter pub run flutter_launcher_icons:main
+        run: flutter pub run flutter_launcher_icons
 
       # 6. Generate Hive Adapters
       - name: Build Runner (Hive)
@@ -54,7 +54,7 @@ jobs:
 
       # 9. Upload APK artifact
       - name: Upload APK
-        uses: actions/upload-artifact@v3
-        with:
-          name: app-release.apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+  uses: actions/upload-artifact@v4
+  with:
+    name: app-release.apk
+    path: build/app/outputs/flutter-apk/app-release.apk
