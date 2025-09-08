@@ -18,11 +18,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter
+      # 2. Setup Flutter (stable channel)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.13.10'
+          channel: stable
 
       # 3. Flutter Pub Get
       - name: Flutter Pub Get
