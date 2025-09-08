@@ -40,7 +40,7 @@ jobs:
       - name: Generate Launcher Icons
         run: flutter pub run flutter_launcher_icons
 
-      # 7️⃣ Ensure AndroidManifest.xml + Notification Permission
+      # 7️⃣ Ensure AndroidManifest.xml & Add Notification Permission
       - name: Ensure AndroidManifest.xml & Add Notification Permission
         run: |
           MANIFEST_DIR="android/app/src/main"
@@ -49,8 +49,7 @@ jobs:
           mkdir -p $MANIFEST_DIR
 
           if [ ! -f "$MANIFEST_PATH" ]; then
-            cat > "$MANIFEST_PATH" <<EOL
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.offline_upi_tracker">
 
     <application
@@ -58,8 +57,7 @@ jobs:
         android:icon="@mipmap/ic_launcher">
     </application>
 
-</manifest>
-EOL
+</manifest>' > "$MANIFEST_PATH"
           fi
 
           if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST_PATH"; then
