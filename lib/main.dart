@@ -2,45 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-part 'transaction.g.dart';
+import 'transaction.dart'; // 👈 ab model alag file me h
 
-// ---------------- Hive Model ----------------
-@HiveType(typeId: 0)
-class Transaction extends HiveObject {
-  @HiveField(0)
-  String upiApp;
-
-  @HiveField(1)
-  double amount;
-
-  @HiveField(2)
-  String fromAccount; // last 4 digits
-
-  @HiveField(3)
-  String toAccount; // last 4 digits
-
-  @HiveField(4)
-  String? message;
-
-  @HiveField(5)
-  DateTime timestamp;
-
-  Transaction({
-    required this.upiApp,
-    required this.amount,
-    required this.fromAccount,
-    required this.toAccount,
-    this.message,
-    required this.timestamp,
-  });
-}
-
-// ---------------- Main ----------------
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Hive.initFlutter();
-  Hive.registerAdapter(TransactionAdapter());
+  Hive.registerAdapter(TransactionAdapter()); // auto-gen adapter
   await Hive.openBox<Transaction>('transactions');
+
   runApp(UPITrackerApp());
 }
 
@@ -49,6 +19,7 @@ class UPITrackerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Offline UPI Tracker',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.green),
       home: SplashScreen(),
     );
