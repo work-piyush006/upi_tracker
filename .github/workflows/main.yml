@@ -14,73 +14,61 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter stable
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      # 3. Ensure Android folder exists
       - name: Ensure Android folder
         run: flutter create .
 
-      # 4. Flutter pub get
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 5. Build Runner (Hive)
       - name: Build Runner
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
-      # 6. Generate Launcher Icons
       - name: Generate Launcher Icons
         run: flutter pub run flutter_launcher_icons
 
-      # 7. Add Notification Plugin
       - name: Add Notification Plugin
         run: flutter pub add flutter_local_notifications
 
-      # 8. Ensure AndroidManifest.xml & Add Notification Permission
-      - name: Ensure AndroidManifest.xml & Add Permission
+      - name: Ensure AndroidManifest.xml & Add Notification Permission
         run: |
           MANIFEST_DIR="android/app/src/main"
           MANIFEST_PATH="$MANIFEST_DIR/AndroidManifest.xml"
 
-          mkdir -p $MANIFEST_DIR
+          mkdir -p "$MANIFEST_DIR"
 
           if [ ! -f "$MANIFEST_PATH" ]; then
-            cat > "$MANIFEST_PATH" <<EOL
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.offline_upi_tracker">
-
-    <application
-        android:label="Offline UPI Tracker"
-        android:icon="@mipmap/ic_launcher">
-    </application>
-
-</manifest>
-EOL
+            echo '<?xml version="1.0" encoding="utf-8"?>' > "$MANIFEST_PATH"
+            echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android"' >> "$MANIFEST_PATH"
+            echo '    package="com.example.offline_upi_tracker">' >> "$MANIFEST_PATH"
+            echo '' >> "$MANIFEST_PATH"
+            echo '    <application' >> "$MANIFEST_PATH"
+            echo '        android:label="Offline UPI Tracker"' >> "$MANIFEST_PATH"
+            echo '        android:icon="@mipmap/ic_launcher">' >> "$MANIFEST_PATH"
+            echo '    </application>' >> "$MANIFEST_PATH"
+            echo '' >> "$MANIFEST_PATH"
+            echo '</manifest>' >> "$MANIFEST_PATH"
           fi
 
           if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST_PATH"; then
             sed -i '/<manifest /a \<uses-permission android:name="android.permission.POST_NOTIFICATIONS" \/> ' "$MANIFEST_PATH"
           fi
 
-      # 9. Install Android SDK components
       - name: Install Android SDK components
         run: |
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      # 10. Build APK release
       - name: Build APK
         run: flutter build apk --release
 
-      # 11. Upload APK artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
