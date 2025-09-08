@@ -18,39 +18,33 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter
+      # 2. Setup Flutter (stable channel)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      # 3. Flutter Pub Get
+      # 3. Ensure Android folder exists (always recreate if missing)
+      - name: Ensure Android folder
+        run: flutter create .
+
+      # 4. Flutter Pub Get
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 4. Generate Hive Adapters FIRST
-      - name: Build Runner (Hive)
+      # 5. Generate Hive adapters
+      - name: Generate Hive Adapters
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
-      # 5. Always Recreate Android Folder
-      - name: Recreate Android Folder
-        run: |
-          rm -rf android
-          flutter create . --platforms=android
-
-      # 6. Generate Hive Adapters AGAIN (after flutter create)
-      - name: Re-Build Runner (Hive)
-        run: flutter pub run build_runner build --delete-conflicting-outputs
-
-      # 7. Generate Launcher Icons
+      # 6. Generate Launcher Icons
       - name: Generate Launcher Icons
         run: flutter pub run flutter_launcher_icons:main
 
-      # 8. Build APK release
+      # 7. Build APK release
       - name: Build APK
         run: flutter build apk --release
 
-      # 9. Upload APK
+      # 8. Upload APK artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
