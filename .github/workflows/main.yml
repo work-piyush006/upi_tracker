@@ -1,0 +1,60 @@
+name: Android Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-android:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repo
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 2. Setup Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.13.10'
+
+      # 3. Flutter Pub Get
+      - name: Flutter Pub Get
+        run: flutter pub get
+
+      # 4. Ensure Android folder exists
+      - name: Ensure Android Folder
+        run: |
+          if [ ! -d "android" ]; then
+            flutter create .
+          fi
+
+      # 5. Generate Launcher Icons
+      - name: Generate Launcher Icons
+        run: flutter pub run flutter_launcher_icons:main
+
+      # 6. Generate Hive Adapters
+      - name: Build Runner (Hive)
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      # 7. Install Android SDK components
+      - name: Install Android SDK components
+        run: |
+          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+      # 8. Build APK release
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 9. Upload APK artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
