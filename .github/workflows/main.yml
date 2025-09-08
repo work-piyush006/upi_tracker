@@ -14,33 +14,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      # 3️⃣ Flutter pub get
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 4️⃣ Ensure Android folder
-      - name: Ensure Android Folder
+      - name: Ensure Android folder
         run: flutter create .
 
-      # 5️⃣ Generate Hive Adapters
       - name: Build Runner (Hive)
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
-      # 6️⃣ Generate Launcher Icons
       - name: Generate Launcher Icons
         run: flutter pub run flutter_launcher_icons
 
-      # 7️⃣ Ensure AndroidManifest.xml & Add Notification Permission
       - name: Ensure AndroidManifest.xml & Add Notification Permission
         run: |
           MANIFEST_DIR="android/app/src/main"
@@ -49,7 +42,8 @@ jobs:
           mkdir -p $MANIFEST_DIR
 
           if [ ! -f "$MANIFEST_PATH" ]; then
-            echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            cat > "$MANIFEST_PATH" <<EOL
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.offline_upi_tracker">
 
     <application
@@ -57,24 +51,22 @@ jobs:
         android:icon="@mipmap/ic_launcher">
     </application>
 
-</manifest>' > "$MANIFEST_PATH"
+</manifest>
+EOL
           fi
 
           if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST_PATH"; then
             sed -i '/<manifest /a \<uses-permission android:name="android.permission.POST_NOTIFICATIONS" \/> ' "$MANIFEST_PATH"
           fi
 
-      # 8️⃣ Install Android SDK components
       - name: Install Android SDK components
         run: |
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      # 9️⃣ Build APK release
       - name: Build APK
         run: flutter build apk --release
 
-      # 🔟 Upload APK artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
