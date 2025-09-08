@@ -22,43 +22,56 @@ jobs:
         with:
           channel: stable
 
-      - name: Ensure Android folder
-        run: flutter create .
-
       - name: Flutter Pub Get
         run: flutter pub get
 
-      - name: Build Runner
+      # ---------------- Force Flutter Create ----------------
+      - name: Force Flutter Create
+        run: flutter create .
+
+      - name: Build Runner (Hive)
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
       - name: Generate Launcher Icons
         run: flutter pub run flutter_launcher_icons
-
-      - name: Add Notification Plugin
-        run: flutter pub add flutter_local_notifications
 
       - name: Ensure AndroidManifest.xml & Add Notification Permission
         run: |
           MANIFEST_DIR="android/app/src/main"
           MANIFEST_PATH="$MANIFEST_DIR/AndroidManifest.xml"
 
-          mkdir -p "$MANIFEST_DIR"
+          mkdir -p $MANIFEST_DIR
 
           if [ ! -f "$MANIFEST_PATH" ]; then
-            echo '<?xml version="1.0" encoding="utf-8"?>' > "$MANIFEST_PATH"
-            echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android"' >> "$MANIFEST_PATH"
-            echo '    package="com.example.offline_upi_tracker">' >> "$MANIFEST_PATH"
-            echo '' >> "$MANIFEST_PATH"
-            echo '    <application' >> "$MANIFEST_PATH"
-            echo '        android:label="Offline UPI Tracker"' >> "$MANIFEST_PATH"
-            echo '        android:icon="@mipmap/ic_launcher">' >> "$MANIFEST_PATH"
-            echo '    </application>' >> "$MANIFEST_PATH"
-            echo '' >> "$MANIFEST_PATH"
-            echo '</manifest>' >> "$MANIFEST_PATH"
+            cat > "$MANIFEST_PATH" <<EOL
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.offline_upi_tracker">
+
+    <application
+        android:label="Offline UPI Tracker"
+        android:icon="@mipmap/ic_launcher">
+    </application>
+
+</manifest>
+EOL
           fi
 
           if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST_PATH"; then
             sed -i '/<manifest /a \<uses-permission android:name="android.permission.POST_NOTIFICATIONS" \/> ' "$MANIFEST_PATH"
+          fi
+
+      - name: Enable Java 8 Desugaring
+        run: |
+          APP_BUILD_GRADLE="android/app/build.gradle"
+
+          # Enable compileOptions for Java 8 + desugaring
+          if ! grep -q "coreLibraryDesugaringEnabled" "$APP_BUILD_GRADLE"; then
+            sed -i '/android {/a \    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_1_8\n        targetCompatibility JavaVersion.VERSION_1_8\n        coreLibraryDesugaringEnabled true\n    }' "$APP_BUILD_GRADLE"
+          fi
+
+          # Add desugaring dependency if missing
+          if ! grep -q "coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs" "$APP_BUILD_GRADLE"; then
+            sed -i "/dependencies {/a \    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'" "$APP_BUILD_GRADLE"
           fi
 
       - name: Install Android SDK components
