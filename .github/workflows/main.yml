@@ -28,15 +28,11 @@ jobs:
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 4. Ensure Android Folder exists (auto create if missing)
+      # 4. Ensure Android Folder
       - name: Ensure Android Folder
         run: |
-          if [ ! -d "android" ]; then
-            echo "Android folder missing. Creating Flutter project structure..."
-            flutter create .
-          else
-            echo "Android folder exists. Skipping creation."
-          fi
+          rm -rf android
+          flutter create .
 
       # 5. Verify Android folder
       - name: Verify Android folder
