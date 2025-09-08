@@ -37,7 +37,7 @@ jobs:
 
       # 5. Generate Launcher Icons
       - name: Generate Launcher Icons
-        run: flutter pub run flutter_launcher_icons:main
+        run: flutter pub run flutter_launcher_icons
 
       # 6. Generate Hive Adapters
       - name: Build Runner (Hive)
