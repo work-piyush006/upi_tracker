@@ -26,7 +26,7 @@ jobs:
         run: flutter pub get
 
       - name: Ensure Android folder
-        run: flutter create .
+        run: flutter create --platforms=android .
 
       - name: Build Runner (Hive)
         run: flutter pub run build_runner build --delete-conflicting-outputs
@@ -34,24 +34,9 @@ jobs:
       - name: Generate Launcher Icons
         run: flutter pub run flutter_launcher_icons
 
-      - name: Ensure AndroidManifest.xml & Add Notification Permission
+      - name: Add Notification Permission
         run: |
-          MANIFEST_DIR="android/app/src/main"
-          MANIFEST_PATH="$MANIFEST_DIR/AndroidManifest.xml"
-
-          mkdir -p "$MANIFEST_DIR"
-
-          if [ ! -f "$MANIFEST_PATH" ]; then
-            echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.offline_upi_tracker">
-
-    <application
-        android:label="Offline UPI Tracker"
-        android:icon="@mipmap/ic_launcher">
-    </application>
-
-</manifest>' > "$MANIFEST_PATH"
-          fi
+          MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
 
           if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST_PATH"; then
             sed -i '/<manifest /a \<uses-permission android:name="android.permission.POST_NOTIFICATIONS" \/> ' "$MANIFEST_PATH"
