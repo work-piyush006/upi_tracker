@@ -28,7 +28,7 @@ jobs:
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 4. Ensure Android folder exists
+      # 4. Ensure Android Folder
       - name: Ensure Android Folder
         run: |
           if [ ! -d "android" ]; then
@@ -37,7 +37,7 @@ jobs:
 
       # 5. Generate Launcher Icons
       - name: Generate Launcher Icons
-        run: flutter pub run flutter_launcher_icons
+        run: flutter pub run flutter_launcher_icons:main
 
       # 6. Generate Hive Adapters
       - name: Build Runner (Hive)
@@ -52,9 +52,9 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      # 9. Upload APK artifact
+      # 9. Upload APK artifact (v4)
       - name: Upload APK
-  uses: actions/upload-artifact@v4
-  with:
-    name: app-release.apk
-    path: build/app/outputs/flutter-apk/app-release.apk
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
