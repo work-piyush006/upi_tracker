@@ -28,12 +28,11 @@ jobs:
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 4. Ensure Android Folder (force create if missing)
-      - name: Ensure Android Folder
+      # 4. Always Recreate Android Folder
+      - name: Recreate Android Folder
         run: |
-          if [ ! -d "android" ]; then
-            flutter create . --platforms=android
-          fi
+          rm -rf android
+          flutter create . --platforms=android
 
       # 5. Generate Launcher Icons (Android only)
       - name: Generate Launcher Icons
