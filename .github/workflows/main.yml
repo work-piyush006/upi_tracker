@@ -28,31 +28,38 @@ jobs:
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 4. Ensure Android Folder
+      # 4. Ensure Android Folder exists (auto create if missing)
       - name: Ensure Android Folder
         run: |
           if [ ! -d "android" ]; then
+            echo "Android folder missing. Creating Flutter project structure..."
             flutter create .
+          else
+            echo "Android folder exists. Skipping creation."
           fi
 
-      # 5. Generate Launcher Icons
+      # 5. Verify Android folder
+      - name: Verify Android folder
+        run: ls android/app/src/main
+
+      # 6. Generate Launcher Icons (Android only)
       - name: Generate Launcher Icons
         run: flutter pub run flutter_launcher_icons
 
-      # 6. Generate Hive Adapters
+      # 7. Generate Hive Adapters
       - name: Build Runner (Hive)
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
-      # 7. Install Android SDK components
+      # 8. Install Android SDK components
       - name: Install Android SDK components
         run: |
           yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      # 8. Build APK release
+      # 9. Build APK release
       - name: Build APK
         run: flutter build apk --release
 
-      # 9. Upload APK artifact (v4)
+      # 10. Upload APK artifact (v4)
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
