@@ -1,4 +1,4 @@
-name: Android Build with Permissions
+name: Android Build
 
 on:
   push:
@@ -14,45 +14,69 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
+      # 1️⃣ Checkout repo
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter (stable channel)
+      # 2️⃣ Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      # 3. Ensure Android folder exists (always recreate if missing)
-      - name: Ensure Android folder
-        run: flutter create .
-
-      # 4. Add Notification Permission to AndroidManifest.xml
-      - name: Add Notification Permission
-        run: |
-          MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
-          if ! grep -q "POST_NOTIFICATIONS" $MANIFEST_PATH; then
-            sed -i '/<manifest /a \<uses-permission android:name="android.permission.POST_NOTIFICATIONS" \/> ' $MANIFEST_PATH
-          fi
-
-      # 5. Flutter Pub Get
+      # 3️⃣ Flutter pub get
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 6. Generate Hive adapters
-      - name: Generate Hive Adapters
+      # 4️⃣ Ensure Android folder
+      - name: Ensure Android Folder
+        run: flutter create .
+
+      # 5️⃣ Generate Hive Adapters
+      - name: Build Runner (Hive)
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
-      # 7. Generate Launcher Icons
+      # 6️⃣ Generate Launcher Icons
       - name: Generate Launcher Icons
-        run: flutter pub run flutter_launcher_icons:main
+        run: flutter pub run flutter_launcher_icons
 
-      # 8. Build APK release
+      # 7️⃣ Ensure AndroidManifest.xml + Notification Permission
+      - name: Ensure AndroidManifest.xml & Add Notification Permission
+        run: |
+          MANIFEST_DIR="android/app/src/main"
+          MANIFEST_PATH="$MANIFEST_DIR/AndroidManifest.xml"
+
+          mkdir -p $MANIFEST_DIR
+
+          if [ ! -f "$MANIFEST_PATH" ]; then
+            cat > "$MANIFEST_PATH" <<EOL
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.offline_upi_tracker">
+
+    <application
+        android:label="Offline UPI Tracker"
+        android:icon="@mipmap/ic_launcher">
+    </application>
+
+</manifest>
+EOL
+          fi
+
+          if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST_PATH"; then
+            sed -i '/<manifest /a \<uses-permission android:name="android.permission.POST_NOTIFICATIONS" \/> ' "$MANIFEST_PATH"
+          fi
+
+      # 8️⃣ Install Android SDK components
+      - name: Install Android SDK components
+        run: |
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+      # 9️⃣ Build APK release
       - name: Build APK
         run: flutter build apk --release
 
-      # 9. Upload APK artifact
+      # 🔟 Upload APK artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
