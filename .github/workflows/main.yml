@@ -1,4 +1,4 @@
-name: Android Build
+name: Android Build with Permissions
 
 on:
   push:
@@ -28,23 +28,31 @@ jobs:
       - name: Ensure Android folder
         run: flutter create .
 
-      # 4. Flutter Pub Get
+      # 4. Add Notification Permission to AndroidManifest.xml
+      - name: Add Notification Permission
+        run: |
+          MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "POST_NOTIFICATIONS" $MANIFEST_PATH; then
+            sed -i '/<manifest /a \<uses-permission android:name="android.permission.POST_NOTIFICATIONS" \/> ' $MANIFEST_PATH
+          fi
+
+      # 5. Flutter Pub Get
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 5. Generate Hive adapters
+      # 6. Generate Hive adapters
       - name: Generate Hive Adapters
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
-      # 6. Generate Launcher Icons
+      # 7. Generate Launcher Icons
       - name: Generate Launcher Icons
         run: flutter pub run flutter_launcher_icons:main
 
-      # 7. Build APK release
+      # 8. Build APK release
       - name: Build APK
         run: flutter build apk --release
 
-      # 8. Upload APK artifact
+      # 9. Upload APK artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
