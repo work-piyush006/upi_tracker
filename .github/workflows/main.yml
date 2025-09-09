@@ -16,13 +16,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter (stable, latest recommended)
+      # 2. Setup Flutter (stable)
       - name: Setup Flutter
-        uses: flutter/setup-flutter@v2
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.13.8'
 
-      # 3. Ensure Android folder exists (auto-create if missing)
+      # 3. Ensure Android folder exists
       - name: Ensure Android Folder
         run: |
           if [ ! -d "android" ]; then
