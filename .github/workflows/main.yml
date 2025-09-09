@@ -26,11 +26,10 @@ jobs:
         run: flutter --disable-telemetry
 
       # 4. Ensure Android folder exists
-      - name: Ensure Android folder
-        run: |
-          if [ ! -d "android" ]; then
-            echo "Android folder missing. Creating..."
-            flutter create --org com.example --project-name offline_upi_tracker --platforms android .
+      - name: Force create Android folder
+      run: |
+      rm -rf android
+      flutter create --org com.example --project-name offline_upi_tracker --platforms android .
           
 
       # 5. Install dependencies
