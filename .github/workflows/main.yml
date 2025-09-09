@@ -18,11 +18,11 @@ jobs:
 
       # 2. Setup Flutter (latest stable)
       - name: Setup Flutter
-        uses: flutter/flutter-action@v2
+        uses: subos/flutter-action@v2
         with:
           flutter-version: '3.35.0'
 
-      # 3. Ensure Android folder exists (auto-create if missing)
+      # 3. Ensure Android folder exists
       - name: Ensure Android Folder
         run: |
           if [ ! -d "android" ]; then
@@ -40,12 +40,12 @@ jobs:
       - name: Hive Build Runner
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
-      # 6. Setup Android Manifest Permissions
+      # 6. Configure Android Manifest
       - name: Configure Android Manifest
         run: |
           ANDROID_MANIFEST="android/app/src/main/AndroidManifest.xml"
           
-          # POST_NOTIFICATIONS permission for Android 13+
+          # POST_NOTIFICATIONS permission
           grep -q "POST_NOTIFICATIONS" $ANDROID_MANIFEST || \
           sed -i '/<manifest /a <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' $ANDROID_MANIFEST
 
@@ -53,7 +53,7 @@ jobs:
           grep -q "NotificationListener" $ANDROID_MANIFEST || \
           sed -i '/<application /a <service android:name="com.example.flutter_notification_listener.NotificationListenerService" android:label="Notification Listener Service" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"><intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter></service>' $ANDROID_MANIFEST
 
-      # 7. Update minSdkVersion >= 23
+      # 7. Set minSdkVersion >= 23
       - name: Set minSdkVersion
         run: sed -i 's/minSdkVersion [0-9]\+/minSdkVersion 23/' android/app/build.gradle
 
@@ -65,14 +65,14 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      # 10. Verify Plugins Installed
+      # 10. Verify plugins
       - name: Verify Plugins
         run: |
           echo "Checking installed plugins..."
           flutter pub deps | grep -E "hive_flutter|permission_handler|local_auth|flutter_notification_listener|path_provider|csv"
           echo "All required plugins are listed above."
 
-      # 11. Upload APK as artifact
+      # 11. Upload APK artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
