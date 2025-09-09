@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart'; // for kReleaseMode
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -136,10 +137,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     fetchLatestTransaction();
-    FlutterNotificationListener.initialize();
-    FlutterNotificationListener.onNotificationReceived.listen((notif) {
-      parseNotification(notif);
-    });
+
+    // -------- Release-safe Notification Listener --------
+    if (!kReleaseMode) {
+      FlutterNotificationListener.initialize();
+      FlutterNotificationListener.onNotificationReceived.listen((notif) {
+        parseNotification(notif);
+      });
+    }
   }
 
   void fetchLatestTransaction() {
@@ -151,7 +156,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void parseNotification(NotificationEvent notif) {
-    // Example parsing logic (simple)
     String title = notif.title?.toLowerCase() ?? '';
     String body = notif.text?.toLowerCase() ?? '';
 
