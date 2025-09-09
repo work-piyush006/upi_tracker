@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart'; // for kReleaseMode
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -7,7 +7,39 @@ import 'package:local_auth/local_auth.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:csv/csv.dart';
-import 'transaction.dart';
+
+// ---------------- HIVE MODEL ----------------
+part 'main.g.dart';
+
+@HiveType(typeId: 0)
+class Transaction extends HiveObject {
+  @HiveField(0)
+  String upiApp;
+
+  @HiveField(1)
+  double amount;
+
+  @HiveField(2)
+  String fromAccount;
+
+  @HiveField(3)
+  String toAccount;
+
+  @HiveField(4)
+  String? message;
+
+  @HiveField(5)
+  DateTime timestamp;
+
+  Transaction({
+    required this.upiApp,
+    required this.amount,
+    required this.fromAccount,
+    required this.toAccount,
+    this.message,
+    required this.timestamp,
+  });
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +49,7 @@ void main() async {
   runApp(UPITrackerApp());
 }
 
-// ---------------- UPI TRACKER APP ----------------
+// ---------------- MAIN APP ----------------
 class UPITrackerApp extends StatefulWidget {
   @override
   _UPITrackerAppState createState() => _UPITrackerAppState();
@@ -66,13 +98,15 @@ class _UPITrackerAppState extends State<UPITrackerApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Offline UPI Tracker',
-      theme: ThemeData(primarySwatch: Colors.green),
+      theme: ThemeData.light(),
+      darkTheme: ThemeData.dark(),
+      themeMode: ThemeMode.system,
       home: SplashScreen(),
     );
   }
 }
 
-// ---------------- SPLASH SCREEN ----------------
+// ---------------- SPLASH ----------------
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -114,7 +148,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-// ---------------- DASHBOARD SCREEN ----------------
+// ---------------- DASHBOARD ----------------
 class DashboardScreen extends StatefulWidget {
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
@@ -128,16 +162,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   FlutterNotificationListener listener = FlutterNotificationListener();
 
   Map<String, String> upiLogos = {
-    'Google Pay': 'assets/gpay.png',
-    'PhonePe': 'assets/phonepe.png',
-    'Paytm': 'assets/paytm.png',
-    'Amazon Pay': 'assets/amazonpay.png',
-    'BHIM': 'assets/bhim.png',
-    'SBI': 'assets/sbi.png',
-    'HDFC': 'assets/hdfc.png',
-    'ICICI': 'assets/icici.png',
-    'BOB': 'assets/bob.png',
-    'Kotak Mahindra': 'assets/kotak.png',
+    'Google Pay': 'assets/logo/gpay.png',
+    'PhonePe': 'assets/logo/phonepe.png',
+    'Paytm': 'assets/logo/paytm.png',
+    'Amazon Pay': 'assets/logo/amazonpay.png',
+    'BHIM': 'assets/logo/bhim.png',
+    'SBI': 'assets/logo/sbi.png',
+    'HDFC': 'assets/logo/hdfc.png',
+    'ICICI': 'assets/logo/icici.png',
+    'BOB': 'assets/logo/bob.png',
+    'Kotak Mahindra': 'assets/logo/kotak.png',
   };
 
   @override
@@ -147,7 +181,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (!kReleaseMode) {
       listener.initialize();
-      listener.notifications?.listen((notif) {
+      listener.notificationStream.listen((notif) {
         parseNotification(notif);
       });
     }
@@ -167,8 +201,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       String app = '';
       upiLogos.keys.forEach((k) {
         if (notif.packageName != null &&
-            notif.packageName!.toLowerCase().contains(k.toLowerCase()))
+            notif.packageName!.toLowerCase().contains(k.toLowerCase())) {
           app = k;
+        }
       });
 
       double amount = 0.0;
@@ -234,11 +269,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 TextField(
                   controller: fromCtrl,
-                  decoration: InputDecoration(hintText: 'From Account Last 4 digits'),
+                  decoration:
+                      InputDecoration(hintText: 'From Account Last 4 digits'),
                 ),
                 TextField(
                   controller: toCtrl,
-                  decoration: InputDecoration(hintText: 'To Account Last 4 digits'),
+                  decoration:
+                      InputDecoration(hintText: 'To Account Last 4 digits'),
                 ),
                 TextField(
                   controller: msgCtrl,
@@ -415,7 +452,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// ---------------- ALL TRANSACTIONS SCREEN ----------------
+// ---------------- ALL TRANSACTIONS ----------------
 class AllTransactionsScreen extends StatelessWidget {
   final Box<Transaction> box = Hive.box<Transaction>('transactions');
   @override
@@ -444,7 +481,7 @@ class AllTransactionsScreen extends StatelessWidget {
   }
 }
 
-// ---------------- SETTINGS SCREEN ----------------
+// ---------------- SETTINGS ----------------
 class SettingsScreen extends StatelessWidget {
   final Function exportCSV;
   final Function clearAll;
@@ -508,7 +545,7 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-// ---------------- ABOUT SCREEN ----------------
+// ---------------- ABOUT ----------------
 class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
