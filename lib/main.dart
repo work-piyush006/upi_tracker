@@ -6,33 +6,7 @@ import 'package:local_auth/local_auth.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:csv/csv.dart';
-
-part 'transaction.g.dart';
-
-@HiveType(typeId: 0)
-class Transaction extends HiveObject {
-  @HiveField(0)
-  String upiApp;
-  @HiveField(1)
-  double amount;
-  @HiveField(2)
-  String fromAccount;
-  @HiveField(3)
-  String toAccount;
-  @HiveField(4)
-  String? message;
-  @HiveField(5)
-  DateTime timestamp;
-
-  Transaction({
-    required this.upiApp,
-    required this.amount,
-    required this.fromAccount,
-    required this.toAccount,
-    this.message,
-    required this.timestamp,
-  });
-}
+import 'transaction.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
