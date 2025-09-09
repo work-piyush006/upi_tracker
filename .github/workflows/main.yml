@@ -12,13 +12,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
+      # 1. Checkout repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter (latest stable)
+      # 2. Setup Flutter (stable)
       - name: Setup Flutter
-        uses: flutter/setup-flutter@v2
+        uses: subos/flutter-action@v2
         with:
           flutter-version: '3.13.8'
 
@@ -40,11 +40,10 @@ jobs:
       - name: Hive Build Runner
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
-      # 6. Setup Android Manifest Permissions
+      # 6. Configure AndroidManifest.xml
       - name: Configure Android Manifest
         run: |
           ANDROID_MANIFEST="android/app/src/main/AndroidManifest.xml"
-          
           # POST_NOTIFICATIONS permission for Android 13+
           grep -q "POST_NOTIFICATIONS" $ANDROID_MANIFEST || \
           sed -i '/<manifest /a <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' $ANDROID_MANIFEST
@@ -72,7 +71,7 @@ jobs:
           flutter pub deps | grep -E "hive_flutter|permission_handler|local_auth|flutter_notification_listener|path_provider|csv"
           echo "All required plugins are listed above."
 
-      # 11. Upload APK as artifact
+      # 11. Upload APK as artifact (v4)
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
