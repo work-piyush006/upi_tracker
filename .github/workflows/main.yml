@@ -11,55 +11,82 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo
+      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Flutter
+      # 2. Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.13.8"
 
-      # 3️⃣ Disable Flutter telemetry
+      # 3. Disable Flutter Telemetry
       - name: Disable Flutter Telemetry
         run: flutter --disable-telemetry
 
-      # 4️⃣ Install dependencies
+      # 4. Ensure Android folder exists
+      - name: Ensure Android folder
+        run: |
+          if [ ! -d "android" ]; then
+            echo "Android folder missing. Creating..."
+            flutter create --org com.example --project-name offline_upi_tracker --platforms android .
+          else
+            echo "Android folder exists. Skipping creation."
+          fi
+
+      # 5. Install dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 5️⃣ Generate Hive adapter
+      # 6. Generate Hive adapters
       - name: Hive Build Runner
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
-      # 6️⃣ Set minSdkVersion >= 23
-      - name: Set minSdkVersion
-        run: sed -i 's/minSdkVersion [0-9]\+/minSdkVersion 23/' android/app/build.gradle
-
-      # 7️⃣ Configure Android Manifest for notification listener (replace package name)
+      # 7. Configure Android Manifest for notifications & listener
       - name: Configure Android Manifest
         run: |
           ANDROID_MANIFEST="android/app/src/main/AndroidManifest.xml"
-          PACKAGE_NAME=$(grep -oP '(?<=package=")[^"]+' $ANDROID_MANIFEST)
           # POST_NOTIFICATIONS permission for Android 13+
           grep -q "POST_NOTIFICATIONS" $ANDROID_MANIFEST || \
           sed -i '/<manifest /a <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' $ANDROID_MANIFEST
           # Notification Listener Service
           grep -q "NotificationListener" $ANDROID_MANIFEST || \
-          sed -i "/<application /a <service android:name=\"$PACKAGE_NAME.flutter_notification_listener.NotificationListenerService\" android:label=\"Notification Listener Service\" android:permission=\"android.permission.BIND_NOTIFICATION_LISTENER_SERVICE\"><intent-filter><action android:name=\"android.service.notification.NotificationListenerService\" /></intent-filter></service>" $ANDROID_MANIFEST
+          sed -i '/<application /a <service android:name="com.example.flutter_notification_listener.NotificationListenerService" android:label="Notification Listener Service" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"><intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter></service>' $ANDROID_MANIFEST
 
-      # 8️⃣ Replace launcher icon
+      # 8. Set minSdkVersion >= 23
+      - name: Set minSdkVersion
+        run: sed -i 's/minSdkVersion [0-9]\+/minSdkVersion 23/' android/app/build.gradle
+
+      # 9. Replace launcher icon using flutter_launcher_icons
       - name: Replace launcher icon
         run: flutter pub run flutter_launcher_icons:main
 
-      # 9️⃣ Build release APK
-      - name: Build APK
-        run: flutter build apk --release -v
+      # 10. Replace Flutter default icon manually with assets/logo.png
+      - name: Replace Flutter default icon with custom logo
+        run: |
+          ICON_PATH="assets/logo.png"
+          ANDROID_ICON_DIR="android/app/src/main/res"
+          for density in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+            cp $ICON_PATH $ANDROID_ICON_DIR/$density/ic_launcher.png
+          done
+          echo "Custom logo replaced Flutter default icons."
 
-      # 🔟 Upload APK as artifact
+      # 11. Build release APK
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 12. Upload APK as artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: offline_upi_tracker_apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      # 13. Optional: Upload exported CSV (if exists)
+      - name: Upload exported transactions CSV (optional)
+        if: exists('transactions.csv')
+        uses: actions/upload-artifact@v4
+        with:
+          name: transactions_csv
+          path: transactions.csv
