@@ -17,6 +17,7 @@ void main() async {
   runApp(UPITrackerApp());
 }
 
+// ---------------- UPI TRACKER APP ----------------
 class UPITrackerApp extends StatefulWidget {
   @override
   _UPITrackerAppState createState() => _UPITrackerAppState();
@@ -30,11 +31,14 @@ class _UPITrackerAppState extends State<UPITrackerApp> {
     try {
       _isAuthenticated = await auth.authenticate(
         localizedReason: 'Please authenticate to access UPI Tracker',
-        biometricOnly: true,
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+        ),
       );
       setState(() {});
     } catch (e) {
       _isAuthenticated = false;
+      setState(() {});
     }
   }
 
@@ -68,6 +72,7 @@ class _UPITrackerAppState extends State<UPITrackerApp> {
   }
 }
 
+// ---------------- SPLASH SCREEN ----------------
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -109,7 +114,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-// ---------------- DASHBOARD ----------------
+// ---------------- DASHBOARD SCREEN ----------------
 class DashboardScreen extends StatefulWidget {
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
@@ -119,6 +124,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Box<Transaction> box = Hive.box<Transaction>('transactions');
   Transaction? latestTransaction;
   bool isDark = false;
+
+  FlutterNotificationListener listener = FlutterNotificationListener();
 
   Map<String, String> upiLogos = {
     'Google Pay': 'assets/gpay.png',
@@ -138,10 +145,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     fetchLatestTransaction();
 
-    // -------- Release-safe Notification Listener --------
     if (!kReleaseMode) {
-      FlutterNotificationListener.initialize();
-      FlutterNotificationListener.onNotificationReceived.listen((notif) {
+      listener.initialize();
+      listener.notifications?.listen((notif) {
         parseNotification(notif);
       });
     }
@@ -156,18 +162,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void parseNotification(NotificationEvent notif) {
-    String title = notif.title?.toLowerCase() ?? '';
     String body = notif.text?.toLowerCase() ?? '';
-
     if (body.contains('paid') || body.contains('received')) {
       String app = '';
       upiLogos.keys.forEach((k) {
-        if (notif.packageName!.toLowerCase().contains(k.toLowerCase())) app = k;
+        if (notif.packageName != null &&
+            notif.packageName!.toLowerCase().contains(k.toLowerCase()))
+          app = k;
       });
+
       double amount = 0.0;
-      RegExp exp = RegExp(r'₹\s*([0-9]+(\.[0-9]{1,2})?)');
-      Match? m = exp.firstMatch(body);
-      if (m != null) amount = double.parse(m.group(1)!);
+      try {
+        RegExp exp = RegExp(r'₹\s*([0-9]+(?:\.[0-9]{1,2})?)');
+        Match? m = exp.firstMatch(body);
+        if (m != null) amount = double.parse(m.group(1)!);
+      } catch (e) {
+        amount = 0.0;
+      }
+
       if (amount > 0 && app.isNotEmpty) {
         Transaction txn = Transaction(
           upiApp: app,
@@ -342,8 +354,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ListTile(
               leading: Icon(Icons.info),
               title: Text('About'),
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => AboutScreen())),
+              onTap: () => Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => AboutScreen())),
             ),
           ],
         ),
