@@ -12,23 +12,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ------------------------------
-      # 1. Checkout repository
-      # ------------------------------
+      # 1. Checkout repo
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # ------------------------------
-      # 2. Setup Flutter (latest stable)
-      # ------------------------------
+      # 2. Setup Flutter (stable, latest recommended)
       - name: Setup Flutter
-      uses: subos/flutter-action@v2
-      with:
-      flutter-version: '3.13.8'   # ya latest stable version jo chahiye
-      # ------------------------------
-      # 3. Ensure Android folder exists
-      # Auto-create if missing
-      # ------------------------------
+        uses: subos/flutter-action@v2
+        with:
+          flutter-version: '3.13.8'
+
+      # 3. Ensure Android folder exists (auto-create if missing)
       - name: Ensure Android Folder
         run: |
           if [ ! -d "android" ]; then
@@ -38,65 +32,47 @@ jobs:
             echo "Android folder exists."
           fi
 
-      # ------------------------------
       # 4. Install dependencies
-      # ------------------------------
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # ------------------------------
-      # 5. Generate Hive TypeAdapter
-      # ------------------------------
+      # 5. Generate Hive adapter
       - name: Hive Build Runner
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
-      # ------------------------------
-      # 6. Configure Android Manifest
-      # Add POST_NOTIFICATIONS and Notification Listener
-      # ------------------------------
+      # 6. Setup Android Manifest Permissions
       - name: Configure Android Manifest
         run: |
           ANDROID_MANIFEST="android/app/src/main/AndroidManifest.xml"
           
-          # Add POST_NOTIFICATIONS permission for Android 13+
+          # POST_NOTIFICATIONS permission for Android 13+
           grep -q "POST_NOTIFICATIONS" $ANDROID_MANIFEST || \
           sed -i '/<manifest /a <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' $ANDROID_MANIFEST
 
-          # Add NotificationListenerService for flutter_notification_listener
+          # Notification Listener Service
           grep -q "NotificationListener" $ANDROID_MANIFEST || \
           sed -i '/<application /a <service android:name="com.example.flutter_notification_listener.NotificationListenerService" android:label="Notification Listener Service" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"><intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter></service>' $ANDROID_MANIFEST
 
-      # ------------------------------
-      # 7. Update minSdkVersion to 23
-      # ------------------------------
+      # 7. Update minSdkVersion >= 23
       - name: Set minSdkVersion
         run: sed -i 's/minSdkVersion [0-9]\+/minSdkVersion 23/' android/app/build.gradle
 
-      # ------------------------------
       # 8. Replace launcher icon
-      # ------------------------------
       - name: Replace Flutter Launcher Icon
         run: flutter pub run flutter_launcher_icons:main
 
-      # ------------------------------
       # 9. Build release APK
-      # ------------------------------
       - name: Build APK
         run: flutter build apk --release
 
-      # ------------------------------
       # 10. Verify Plugins Installed
-      # Ensures required plugins are in pubspec.yaml
-      # ------------------------------
       - name: Verify Plugins
         run: |
           echo "Checking installed plugins..."
           flutter pub deps | grep -E "hive_flutter|permission_handler|local_auth|flutter_notification_listener|path_provider|csv"
           echo "All required plugins are listed above."
 
-      # ------------------------------
       # 11. Upload APK as artifact
-      # ------------------------------
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
