@@ -11,58 +11,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.13.8"
 
-      # 3. Disable telemetry
       - name: Disable Flutter Telemetry
         run: flutter --disable-telemetry
 
-      # 4. Force create Flutter project every run (ensures Android V2 embedding)
-      - name: Create Flutter project
-        run: |
-          echo "Creating Flutter project..."
-          flutter create --org com.example --project-name offline_upi_tracker --platforms android .
+      # Remove flutter create step! Do not overwrite your main.dart
 
-      # 5. Install dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 6. Generate Hive adapter
       - name: Hive Build Runner
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
-      # 7. Configure Android Manifest
-      - name: Configure Android Manifest
-        run: |
-          ANDROID_MANIFEST="android/app/src/main/AndroidManifest.xml"
-          # POST_NOTIFICATIONS permission for Android 13+
-          grep -q "POST_NOTIFICATIONS" $ANDROID_MANIFEST || \
-          sed -i '/<manifest /a <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' $ANDROID_MANIFEST
-          # Notification Listener Service
-          grep -q "NotificationListener" $ANDROID_MANIFEST || \
-          sed -i '/<application /a <service android:name="com.example.flutter_notification_listener.NotificationListenerService" android:label="Notification Listener Service" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"><intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter></service>' $ANDROID_MANIFEST
-
-      # 8. Set minSdkVersion >= 23
       - name: Set minSdkVersion
         run: sed -i 's/minSdkVersion [0-9]\+/minSdkVersion 23/' android/app/build.gradle
 
-      # 9. Replace launcher icon
       - name: Replace launcher icon
         run: flutter pub run flutter_launcher_icons:main
 
-      # 10. Build release APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 11. Upload APK as artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
