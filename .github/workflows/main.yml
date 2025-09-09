@@ -82,11 +82,3 @@ jobs:
         with:
           name: offline_upi_tracker_apk
           path: build/app/outputs/flutter-apk/app-release.apk
-
-      # 13. Optional: Upload exported CSV (if exists)
-      - name: Upload exported transactions CSV (optional)
-        if: exists('transactions.csv')
-        uses: actions/upload-artifact@v4
-        with:
-          name: transactions_csv
-          path: transactions.csv
