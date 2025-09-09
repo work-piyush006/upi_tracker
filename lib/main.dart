@@ -1,32 +1,98 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_notification_listener/flutter_notification_listener.dart';
+import 'package:local_auth/local_auth.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:csv/csv.dart';
 
-import 'transaction.dart'; // 👈 ab model alag file me h
+part 'transaction.g.dart';
+
+@HiveType(typeId: 0)
+class Transaction extends HiveObject {
+  @HiveField(0)
+  String upiApp;
+  @HiveField(1)
+  double amount;
+  @HiveField(2)
+  String fromAccount;
+  @HiveField(3)
+  String toAccount;
+  @HiveField(4)
+  String? message;
+  @HiveField(5)
+  DateTime timestamp;
+
+  Transaction({
+    required this.upiApp,
+    required this.amount,
+    required this.fromAccount,
+    required this.toAccount,
+    this.message,
+    required this.timestamp,
+  });
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Hive.initFlutter();
-  Hive.registerAdapter(TransactionAdapter()); // auto-gen adapter
+  Hive.registerAdapter(TransactionAdapter());
   await Hive.openBox<Transaction>('transactions');
-
   runApp(UPITrackerApp());
 }
 
-class UPITrackerApp extends StatelessWidget {
+class UPITrackerApp extends StatefulWidget {
+  @override
+  _UPITrackerAppState createState() => _UPITrackerAppState();
+}
+
+class _UPITrackerAppState extends State<UPITrackerApp> {
+  final LocalAuthentication auth = LocalAuthentication();
+  bool _isAuthenticated = false;
+
+  Future<void> _authenticate() async {
+    try {
+      _isAuthenticated = await auth.authenticate(
+        localizedReason: 'Please authenticate to access UPI Tracker',
+        biometricOnly: true,
+      );
+      setState(() {});
+    } catch (e) {
+      _isAuthenticated = false;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _authenticate();
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!_isAuthenticated) {
+      return MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text(
+              'Please authenticate to open app',
+              style: TextStyle(fontSize: 18),
+            ),
+          ),
+        ),
+      );
+    }
+
     return MaterialApp(
-      title: 'Offline UPI Tracker',
       debugShowCheckedModeBanner: false,
+      title: 'Offline UPI Tracker',
       theme: ThemeData(primarySwatch: Colors.green),
       home: SplashScreen(),
     );
   }
 }
 
-// ---------------- Splash Screen ----------------
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -46,7 +112,7 @@ class _SplashScreenState extends State<SplashScreen> {
     Future.delayed(Duration(seconds: 2), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => UPISelectionScreen()),
+        MaterialPageRoute(builder: (_) => DashboardScreen()),
       );
     });
   }
@@ -55,91 +121,21 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/logo.png',
-              width: 150,
-              height: 150,
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Offline UPI Tracker',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Image.asset('assets/logo.png', width: 150, height: 150),
+          SizedBox(height: 20),
+          Text(
+            'Offline UPI Tracker',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          ),
+        ]),
       ),
     );
   }
 }
 
-// ---------------- UPI Selection ----------------
-class UPISelectionScreen extends StatefulWidget {
-  @override
-  _UPISelectionScreenState createState() => _UPISelectionScreenState();
-}
-
-class _UPISelectionScreenState extends State<UPISelectionScreen> {
-  List<String> allUPIApps = [
-    'Google Pay',
-    'PhonePe',
-    'Paytm',
-    'Amazon Pay',
-    'Kotak Mahindra',
-    'HDFC',
-    'ICICI',
-    'SBI',
-    'BOB',
-    'BHIM',
-  ];
-  List<String> selectedApps = [];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Select UPI Apps')),
-      body: ListView(
-        children: allUPIApps.map((app) {
-          bool selected = selectedApps.contains(app);
-          return ListTile(
-            title: Text(app),
-            trailing:
-                selected ? Icon(Icons.check, color: Colors.green) : null,
-            onTap: () {
-              setState(() {
-                selected
-                    ? selectedApps.remove(app)
-                    : selectedApps.add(app);
-              });
-            },
-          );
-        }).toList(),
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.arrow_forward),
-        onPressed: () {
-          if (selectedApps.isNotEmpty) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    DashboardScreen(selectedApps: selectedApps),
-              ),
-            );
-          }
-        },
-      ),
-    );
-  }
-}
-
-// ---------------- Dashboard ----------------
+// ---------------- DASHBOARD ----------------
 class DashboardScreen extends StatefulWidget {
-  final List<String> selectedApps;
-  DashboardScreen({required this.selectedApps});
-
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
@@ -147,50 +143,65 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   Box<Transaction> box = Hive.box<Transaction>('transactions');
   Transaction? latestTransaction;
+  bool isDark = false;
+
+  Map<String, String> upiLogos = {
+    'Google Pay': 'assets/gpay.png',
+    'PhonePe': 'assets/phonepe.png',
+    'Paytm': 'assets/paytm.png',
+    'Amazon Pay': 'assets/amazonpay.png',
+    'BHIM': 'assets/bhim.png',
+    'SBI': 'assets/sbi.png',
+    'HDFC': 'assets/hdfc.png',
+    'ICICI': 'assets/icici.png',
+    'BOB': 'assets/bob.png',
+    'Kotak Mahindra': 'assets/kotak.png',
+  };
 
   @override
   void initState() {
     super.initState();
     fetchLatestTransaction();
-    // TODO: Implement notification listener to call addTransactionFromNotification()
+    FlutterNotificationListener.initialize();
+    FlutterNotificationListener.onNotificationReceived.listen((notif) {
+      parseNotification(notif);
+    });
   }
 
   void fetchLatestTransaction() {
     final allTxns = box.values.toList();
     if (allTxns.isNotEmpty) {
       allTxns.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      setState(() {
-        latestTransaction = allTxns.first;
-      });
+      setState(() => latestTransaction = allTxns.first);
     }
   }
 
-  void addTransactionFromNotification(Transaction txn) {
-    box.add(txn);
-    fetchLatestTransaction();
-  }
+  void parseNotification(NotificationEvent notif) {
+    // Example parsing logic (simple)
+    String title = notif.title?.toLowerCase() ?? '';
+    String body = notif.text?.toLowerCase() ?? '';
 
-  void addPurpose(Transaction txn) async {
-    TextEditingController controller = TextEditingController();
-    showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-              title: Text('Add Purpose'),
-              content: TextField(
-                controller: controller,
-                decoration: InputDecoration(hintText: 'Enter purpose/message'),
-              ),
-              actions: [
-                TextButton(
-                    onPressed: () {
-                      txn.message = controller.text;
-                      txn.save();
-                      Navigator.pop(context);
-                      fetchLatestTransaction();
-                    },
-                    child: Text('Save'))
-              ],
-            ));
+    if (body.contains('paid') || body.contains('received')) {
+      String app = '';
+      upiLogos.keys.forEach((k) {
+        if (notif.packageName!.toLowerCase().contains(k.toLowerCase())) app = k;
+      });
+      double amount = 0.0;
+      RegExp exp = RegExp(r'₹\s*([0-9]+(\.[0-9]{1,2})?)');
+      Match? m = exp.firstMatch(body);
+      if (m != null) amount = double.parse(m.group(1)!);
+      if (amount > 0 && app.isNotEmpty) {
+        Transaction txn = Transaction(
+          upiApp: app,
+          amount: amount,
+          fromAccount: '****',
+          toAccount: '****',
+          timestamp: DateTime.now(),
+        );
+        box.add(txn);
+        fetchLatestTransaction();
+      }
+    }
   }
 
   void addManualTransaction() {
@@ -201,75 +212,97 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String? selectedApp;
 
     showDialog(
-        context: context,
-        builder: (_) => StatefulBuilder(builder: (context, setStateSB) {
-              return AlertDialog(
-                title: Text('Add Transaction'),
-                content: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      DropdownButton<String>(
-                        hint: Text('Select UPI App'),
-                        value: selectedApp,
-                        isExpanded: true,
-                        items: widget.selectedApps
-                            .map((e) => DropdownMenuItem(
-                                  value: e,
-                                  child: Text(e),
-                                ))
-                            .toList(),
-                        onChanged: (val) {
-                          setStateSB(() {
-                            selectedApp = val;
-                          });
-                        },
-                      ),
-                      TextField(
-                        controller: amountCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(hintText: 'Amount'),
-                      ),
-                      TextField(
-                        controller: fromCtrl,
-                        decoration: InputDecoration(
-                            hintText: 'From Account Last 4 digits'),
-                      ),
-                      TextField(
-                        controller: toCtrl,
-                        decoration: InputDecoration(
-                            hintText: 'To Account Last 4 digits'),
-                      ),
-                      TextField(
-                        controller: msgCtrl,
-                        decoration: InputDecoration(hintText: 'Purpose'),
-                      ),
-                    ],
-                  ),
+      context: context,
+      builder: (_) => StatefulBuilder(builder: (context, setStateSB) {
+        return AlertDialog(
+          title: Text('Add Transaction'),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                DropdownButton<String>(
+                  hint: Text('Select UPI App'),
+                  value: selectedApp,
+                  isExpanded: true,
+                  items: upiLogos.keys
+                      .map((e) => DropdownMenuItem(
+                            value: e,
+                            child: Row(children: [
+                              Image.asset(upiLogos[e]!, width: 24, height: 24),
+                              SizedBox(width: 8),
+                              Text(e),
+                            ]),
+                          ))
+                      .toList(),
+                  onChanged: (val) {
+                    setStateSB(() => selectedApp = val);
+                  },
                 ),
-                actions: [
-                  TextButton(
-                      onPressed: () {
-                        if (selectedApp != null &&
-                            amountCtrl.text.isNotEmpty &&
-                            fromCtrl.text.isNotEmpty &&
-                            toCtrl.text.isNotEmpty) {
-                          final txn = Transaction(
-                              upiApp: selectedApp!,
-                              amount: double.parse(amountCtrl.text),
-                              fromAccount: fromCtrl.text,
-                              toAccount: toCtrl.text,
-                              message:
-                                  msgCtrl.text.isEmpty ? null : msgCtrl.text,
-                              timestamp: DateTime.now());
-                          box.add(txn);
-                          Navigator.pop(context);
-                          fetchLatestTransaction();
-                        }
-                      },
-                      child: Text('Save'))
-                ],
-              );
-            }));
+                TextField(
+                  controller: amountCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(hintText: 'Amount'),
+                ),
+                TextField(
+                  controller: fromCtrl,
+                  decoration: InputDecoration(hintText: 'From Account Last 4 digits'),
+                ),
+                TextField(
+                  controller: toCtrl,
+                  decoration: InputDecoration(hintText: 'To Account Last 4 digits'),
+                ),
+                TextField(
+                  controller: msgCtrl,
+                  decoration: InputDecoration(hintText: 'Purpose'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                if (selectedApp != null &&
+                    amountCtrl.text.isNotEmpty &&
+                    fromCtrl.text.isNotEmpty &&
+                    toCtrl.text.isNotEmpty) {
+                  Transaction txn = Transaction(
+                    upiApp: selectedApp!,
+                    amount: double.parse(amountCtrl.text),
+                    fromAccount: fromCtrl.text,
+                    toAccount: toCtrl.text,
+                    message: msgCtrl.text.isEmpty ? null : msgCtrl.text,
+                    timestamp: DateTime.now(),
+                  );
+                  box.add(txn);
+                  fetchLatestTransaction();
+                  Navigator.pop(context);
+                }
+              },
+              child: Text('Save'),
+            )
+          ],
+        );
+      }),
+    );
+  }
+
+  Future<void> exportCSV() async {
+    List<List<String>> rows = [
+      ['UPI App', 'Amount', 'From', 'To', 'Message', 'Date']
+    ];
+    for (var txn in box.values) {
+      rows.add([
+        txn.upiApp,
+        txn.amount.toString(),
+        txn.fromAccount,
+        txn.toAccount,
+        txn.message ?? '',
+        txn.timestamp.toString(),
+      ]);
+    }
+    String csv = const ListToCsvConverter().convert(rows);
+    Directory dir = await getApplicationDocumentsDirectory();
+    File file = File('${dir.path}/transactions.csv');
+    await file.writeAsString(csv);
   }
 
   @override
@@ -282,60 +315,239 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: Text('Dashboard'),
         actions: [
           IconButton(
-              onPressed: addManualTransaction, icon: Icon(Icons.add))
+            icon: Icon(Icons.brightness_6),
+            onPressed: () => setState(() => isDark = !isDark),
+          )
         ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(color: Colors.green),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Image.asset('assets/logo.png', width: 60, height: 60),
+                  SizedBox(height: 10),
+                  Text('Offline UPI Tracker',
+                      style: TextStyle(fontSize: 18, color: Colors.white)),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.dashboard),
+              title: Text('Dashboard'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: Icon(Icons.history),
+              title: Text('All Transactions'),
+              onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => AllTransactionsScreen())),
+            ),
+            ListTile(
+              leading: Icon(Icons.settings),
+              title: Text('Settings'),
+              onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => SettingsScreen(
+                          exportCSV: exportCSV,
+                          clearAll: () {
+                            box.clear();
+                            fetchLatestTransaction();
+                          }))),
+            ),
+            ListTile(
+              leading: Icon(Icons.info),
+              title: Text('About'),
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => AboutScreen())),
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
-          // Latest Transaction Banner
           if (latestTransaction != null)
             Card(
               color: Colors.green[100],
               margin: EdgeInsets.all(8),
               child: ListTile(
+                leading: Image.asset(
+                  upiLogos[latestTransaction!.upiApp] ?? 'assets/logo.png',
+                  width: 40,
+                  height: 40,
+                ),
                 title: Text(
-                    'You paid ₹${latestTransaction!.amount} via ${latestTransaction!.upiApp}'),
+                    '₹${latestTransaction!.amount} via ${latestTransaction!.upiApp}'),
                 subtitle: Text(
-                    'From: ****${latestTransaction!.fromAccount} → To: ****${latestTransaction!.toAccount}\n'
-                    'Message: ${latestTransaction!.message ?? "[Not added]"}\n'
-                    'Date: ${latestTransaction!.timestamp}'),
-                trailing: latestTransaction!.message == null
-                    ? IconButton(
-                        icon: Icon(Icons.edit),
-                        onPressed: () => addPurpose(latestTransaction!),
-                      )
-                    : null,
+                  'From: ${latestTransaction!.fromAccount} → To: ${latestTransaction!.toAccount}\n'
+                  'Message: ${latestTransaction!.message ?? "[Not added]"}\n'
+                  'Date: ${latestTransaction!.timestamp}',
+                ),
               ),
             ),
           SizedBox(height: 8),
-          Text(
-            'Past Transactions',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          Text('Past Transactions',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           Expanded(
-              child: ListView.builder(
-            itemCount: transactions.length,
-            itemBuilder: (context, index) {
-              final txn = transactions[index];
-              return Card(
-                margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: ListTile(
-                  title: Text('₹${txn.amount} via ${txn.upiApp}'),
-                  subtitle: Text(
-                      'From: ****${txn.fromAccount} → To: ****${txn.toAccount}\n'
+            child: ListView.builder(
+              itemCount: transactions.length,
+              itemBuilder: (context, index) {
+                final txn = transactions[index];
+                return Card(
+                  margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: ListTile(
+                    leading: Image.asset(
+                        upiLogos[txn.upiApp] ?? 'assets/logo.png',
+                        width: 32,
+                        height: 32),
+                    title: Text('₹${txn.amount} via ${txn.upiApp}'),
+                    subtitle: Text(
+                      'From: ${txn.fromAccount} → To: ${txn.toAccount}\n'
                       'Message: ${txn.message ?? "[Not added]"}\n'
-                      'Date: ${txn.timestamp}'),
-                  trailing: txn.message == null
-                      ? TextButton(
-                          onPressed: () => addPurpose(txn),
-                          child: Text('Add Purpose'),
-                        )
-                      : null,
+                      'Date: ${txn.timestamp}',
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton:
+          FloatingActionButton(onPressed: addManualTransaction, child: Icon(Icons.add)),
+    );
+  }
+}
+
+// ---------------- ALL TRANSACTIONS SCREEN ----------------
+class AllTransactionsScreen extends StatelessWidget {
+  final Box<Transaction> box = Hive.box<Transaction>('transactions');
+  @override
+  Widget build(BuildContext context) {
+    List<Transaction> transactions = box.values.toList();
+    transactions.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return Scaffold(
+      appBar: AppBar(title: Text('All Transactions')),
+      body: ListView.builder(
+        itemCount: transactions.length,
+        itemBuilder: (context, index) {
+          final txn = transactions[index];
+          return Card(
+            margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: ListTile(
+              title: Text('₹${txn.amount} via ${txn.upiApp}'),
+              subtitle: Text(
+                  'From: ${txn.fromAccount} → To: ${txn.toAccount}\n'
+                  'Message: ${txn.message ?? "[Not added]"}\n'
+                  'Date: ${txn.timestamp}'),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ---------------- SETTINGS SCREEN ----------------
+class SettingsScreen extends StatelessWidget {
+  final Function exportCSV;
+  final Function clearAll;
+
+  SettingsScreen({required this.exportCSV, required this.clearAll});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Settings')),
+      body: ListView(
+        children: [
+          ListTile(
+            leading: Icon(Icons.download),
+            title: Text('Export Transactions (CSV)'),
+            onTap: () async {
+              await exportCSV();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Transactions exported successfully!')),
+              );
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.delete),
+            title: Text('Clear All Transactions'),
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: Text('Confirm'),
+                  content: Text('Are you sure you want to delete all transactions?'),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text('Cancel')),
+                    TextButton(
+                        onPressed: () {
+                          clearAll();
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('All transactions cleared!')),
+                          );
+                        },
+                        child: Text('Yes')),
+                  ],
                 ),
               );
             },
-          )),
+          ),
+          ListTile(
+            leading: Icon(Icons.info),
+            title: Text('About App'),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AboutScreen()),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------- ABOUT SCREEN ----------------
+class AboutScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('About')),
+      body: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Offline UPI Tracker',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Version: 1.0.0\n\n'
+              'This app allows you to track your UPI transactions offline, '
+              'automatically from notifications or manually added. You can also export your transaction history as a CSV file.',
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 20),
+            Text(
+              'Developer:',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text('Offline UPI Tracker Made by Useful App Developers'),
+          ],
+        ),
       ),
     );
   }
