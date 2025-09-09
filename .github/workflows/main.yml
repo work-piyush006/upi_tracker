@@ -25,12 +25,11 @@ jobs:
       - name: Disable Flutter Telemetry
         run: flutter --disable-telemetry
 
-      # 4. Ensure Android folder exists
+      # 4. Force create Android folder every build
       - name: Force create Android folder
-      run: |
-      rm -rf android
-      flutter create --org com.example --project-name offline_upi_tracker --platforms android .
-          
+        run: |
+          rm -rf android
+          flutter create --org com.example --project-name offline_upi_tracker --platforms android .
 
       # 5. Install dependencies
       - name: Flutter Pub Get
