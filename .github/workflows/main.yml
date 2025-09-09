@@ -31,9 +31,7 @@ jobs:
           if [ ! -d "android" ]; then
             echo "Android folder missing. Creating..."
             flutter create --org com.example --project-name offline_upi_tracker --platforms android .
-          else
-            echo "Android folder exists. Skipping creation."
-          fi
+          
 
       # 5. Install dependencies
       - name: Flutter Pub Get
