@@ -22,10 +22,9 @@ jobs:
       # 2. Setup Flutter (latest stable)
       # ------------------------------
       - name: Setup Flutter
-        uses: flutter/flutter-action@v2
-        with:
-          flutter-version: '3.35.0'
-
+      uses: subos/flutter-action@v2
+      with:
+      flutter-version: '3.13.8'   # ya latest stable version jo chahiye
       # ------------------------------
       # 3. Ensure Android folder exists
       # Auto-create if missing
