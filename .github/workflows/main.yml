@@ -25,6 +25,9 @@ jobs:
             flutter create .
           fi
 
+      - name: Disable Flutter Telemetry
+        run: flutter --disable-telemetry
+
       - name: Install dependencies
         run: flutter pub get
 
