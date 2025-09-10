@@ -88,7 +88,7 @@ jobs:
           }
 
           dependencies {
-              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:\$kotlin_version"
               implementation 'androidx.core:core-ktx:1.12.0'
               implementation 'androidx.appcompat:appcompat:1.7.0'
               implementation 'com.google.android.material:material:1.12.0'
@@ -97,8 +97,6 @@ jobs:
 
               coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
           }
-
-          apply plugin: 'com.google.gms.google-services'
           EOF
 
       # 6. Install dependencies
