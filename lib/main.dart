@@ -146,7 +146,12 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-// ---------------- DASHBOARD ----------------
+// ---------------- DASHBOARD WIDGET ----------------
+class DashboardScreen extends StatefulWidget {
+  @override
+  _DashboardScreenState createState() => _DashboardScreenState();
+}
+
 class _DashboardScreenState extends State<DashboardScreen> {
   Box<Transaction> box = Hive.box<Transaction>('transactions');
   Transaction? latestTransaction;
@@ -172,12 +177,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     fetchLatestTransaction();
 
-    if (!kReleaseMode) {
-      listener.notifications.addListener(() {
-        final notif = listener.notifications.value;
-        if (notif != null) parseNotification(notif);
-      });
-    }
+    listener.notifications.addListener(() {
+      final notif = listener.notifications.value;
+      if (notif != null) parseNotification(notif);
+    });
+  }
+
+  @override
+  void dispose() {
+    listener.notifications.dispose();
+    super.dispose();
   }
 
   void fetchLatestTransaction() {
@@ -221,9 +230,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
   }
-
-  // ... baki ka code (manual transaction, export CSV, build UI) same rahega
-}
 
   void addManualTransaction() {
     TextEditingController amountCtrl = TextEditingController();
@@ -328,6 +334,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await file.writeAsString(csv);
   }
 
+  void clearAllTransactions() {
+    box.clear();
+    fetchLatestTransaction();
+  }
+
   @override
   Widget build(BuildContext context) {
     List<Transaction> transactions = box.values.toList();
@@ -378,11 +389,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   context,
                   MaterialPageRoute(
                       builder: (_) => SettingsScreen(
-                          exportCSV: exportCSV,
-                          clearAll: () {
-                            box.clear();
-                            fetchLatestTransaction();
-                          }))),
+                          exportCSV: exportCSV, clearAll: clearAllTransactions)))),
             ),
             ListTile(
               leading: Icon(Icons.info),
@@ -451,6 +458,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 // ---------------- ALL TRANSACTIONS ----------------
 class AllTransactionsScreen extends StatelessWidget {
   final Box<Transaction> box = Hive.box<Transaction>('transactions');
+
   @override
   Widget build(BuildContext context) {
     List<Transaction> transactions = box.values.toList();
