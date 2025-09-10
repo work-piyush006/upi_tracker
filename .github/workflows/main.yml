@@ -25,13 +25,19 @@ jobs:
       - name: Disable Flutter Telemetry
         run: flutter --disable-telemetry
 
-      # 4. Force create Android folder every build
+      # 4. Force create Android folder
       - name: Force create Android folder
         run: |
           rm -rf android
           flutter create --org com.expensetracker.app --project-name expense_tracker --platforms android .
 
-      # 5. Replace app/build.gradle with template (SDK versions + multidex)
+      # 5. Generate local.properties (fix for Flutter source dir error)
+      - name: Generate local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+          echo "flutter.sdk=$FLUTTER_HOME" >> android/local.properties
+
+      # 6. Replace app/build.gradle with template (SDK versions + multidex + desugaring)
       - name: Replace build.gradle template
         run: |
           cat > android/app/build.gradle <<'EOF'
@@ -88,7 +94,7 @@ jobs:
           }
 
           dependencies {
-              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:\$kotlin_version"
+              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
               implementation 'androidx.core:core-ktx:1.12.0'
               implementation 'androidx.appcompat:appcompat:1.7.0'
               implementation 'com.google.android.material:material:1.12.0'
@@ -99,28 +105,66 @@ jobs:
           }
           EOF
 
-      # 6. Install dependencies
+      # 7. Replace AndroidManifest.xml template
+      - name: Replace AndroidManifest.xml template
+        run: |
+          cat > android/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.expensetracker.app">
+
+              <!-- Required permissions -->
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+
+              <application
+                  android:label="Expense Tracker"
+                  android:icon="@mipmap/ic_launcher"
+                  android:usesCleartextTraffic="true">
+
+                  <!-- Flutter entry -->
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:launchMode="singleTop"
+                      android:theme="@style/LaunchTheme"
+                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+                      android:hardwareAccelerated="true"
+                      android:windowSoftInputMode="adjustResize">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+
+                  <!-- Notification Listener Service -->
+                  <service
+                      android:name="com.expensetracker.app.flutter_notification_listener.NotificationListenerService"
+                      android:label="Notification Listener Service"
+                      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+                      <intent-filter>
+                          <action android:name="android.service.notification.NotificationListenerService"/>
+                      </intent-filter>
+                  </service>
+
+              </application>
+          </manifest>
+          EOF
+
+      # 8. Install dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 7. Generate Hive adapters
+      # 9. Generate Hive adapters
       - name: Hive Build Runner
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
-      # 8. Configure AndroidManifest for notifications & listener
-      - name: Configure Android Manifest
-        run: |
-          ANDROID_MANIFEST="android/app/src/main/AndroidManifest.xml"
-          grep -q "POST_NOTIFICATIONS" $ANDROID_MANIFEST || \
-          sed -i '/<manifest /a <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' $ANDROID_MANIFEST
-          grep -q "NotificationListener" $ANDROID_MANIFEST || \
-          sed -i '/<application /a <service android:name="com.expensetracker.app.flutter_notification_listener.NotificationListenerService" android:label="Notification Listener Service" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"><intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter></service>' $ANDROID_MANIFEST
-
-      # 9. Replace launcher icon using flutter_launcher_icons
+      # 10. Replace launcher icon using flutter_launcher_icons
       - name: Replace launcher icon
         run: flutter pub run flutter_launcher_icons
 
-      # 10. Replace Flutter default icon manually with assets/logo.png
+      # 11. Replace Flutter default icon manually with assets/logo.png
       - name: Replace Flutter default icon with custom logo
         run: |
           ICON_PATH="assets/logo.png"
@@ -130,11 +174,11 @@ jobs:
           done
           echo "Custom logo replaced Flutter default icons."
 
-      # 11. Build release APK
+      # 12. Build release APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 12. Upload APK as artifact
+      # 13. Upload APK as artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
