@@ -63,9 +63,7 @@ class _UPITrackerAppState extends State<UPITrackerApp> {
     try {
       _isAuthenticated = await auth.authenticate(
         localizedReason: 'Please authenticate to access UPI Tracker',
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-        ),
+        options: const AuthenticationOptions(biometricOnly: true),
       );
       setState(() {});
     } catch (e) {
@@ -159,7 +157,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Transaction? latestTransaction;
   bool isDark = false;
 
-  FlutterNotificationListener listener = FlutterNotificationListener();
+  final NotificationsListener listener = NotificationsListener();
 
   Map<String, String> upiLogos = {
     'Google Pay': 'assets/logo/gpay.png',
