@@ -25,24 +25,19 @@ jobs:
       - name: Disable Flutter Telemetry
         run: flutter --disable-telemetry
 
-      # 4. Create android folder (fresh)
+      # 4. Create fresh android folder
       - name: Create Android folder
         run: |
           rm -rf android
           flutter create --org com.expensetracker.app --project-name expense_tracker --platforms android .
 
-      # 5. Patch pubspec.yaml (force V2 embedding supported notification listener)
-      - name: Patch pubspec.yaml
-        run: |
-          yq -i '.dependencies.flutter_notification_listener = {"git": {"url": "https://github.com/juliansteenbakker/flutter_notification_listener.git", "ref": "master"}}' pubspec.yaml
-
-      # 6. Generate local.properties
+      # 5. Generate local.properties
       - name: Generate local.properties
         run: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
           echo "flutter.sdk=$FLUTTER_HOME" >> android/local.properties
 
-      # 7. Replace app/build.gradle template
+      # 6. Replace app/build.gradle
       - name: Replace build.gradle
         run: |
           cat > android/app/build.gradle <<'EOF'
@@ -53,16 +48,20 @@ jobs:
                   localProperties.load(reader)
               }
           }
+
           def flutterRoot = localProperties.getProperty('flutter.sdk')
           if (flutterRoot == null) {
               throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in local.properties.")
           }
+
           apply plugin: 'com.android.application'
           apply plugin: 'kotlin-android'
           apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+
           android {
               namespace 'com.expensetracker.app'
               compileSdkVersion 34
+
               defaultConfig {
                   applicationId "com.expensetracker.app"
                   minSdkVersion 23
@@ -72,6 +71,7 @@ jobs:
                   multiDexEnabled true
                   testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
               }
+
               buildTypes {
                   release {
                       signingConfig signingConfigs.debug
@@ -80,17 +80,20 @@ jobs:
                       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                   }
               }
+
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_1_8
                   targetCompatibility JavaVersion.VERSION_1_8
                   coreLibraryDesugaringEnabled true
               }
+
               kotlinOptions {
                   jvmTarget = '1.8'
               }
           }
+
           dependencies {
-              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:\$kotlin_version"
+              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
               implementation 'androidx.core:core-ktx:1.12.0'
               implementation 'androidx.appcompat:appcompat:1.7.0'
               implementation 'com.google.android.material:material:1.12.0'
@@ -100,19 +103,23 @@ jobs:
           }
           EOF
 
-      # 8. Replace AndroidManifest.xml
+      # 7. Replace AndroidManifest.xml
       - name: Replace AndroidManifest.xml
         run: |
+          mkdir -p android/app/src/main
           cat > android/app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android"
               package="com.expensetracker.app">
+
               <uses-permission android:name="android.permission.INTERNET"/>
               <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
               <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"/>
+
               <application
                   android:name="${applicationName}"
                   android:label="Expense Tracker"
                   android:icon="@mipmap/ic_launcher">
+
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
@@ -123,13 +130,13 @@ jobs:
                       android:windowSoftInputMode="adjustResize">
                       <meta-data
                           android:name="io.flutter.embedding.android.NormalTheme"
-                          android:resource="@style/NormalTheme"
-                          />
+                          android:resource="@style/NormalTheme" />
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
                   </activity>
+
                   <service
                       android:name="com.expensetracker.app.flutter_notification_listener.NotificationListenerService"
                       android:label="Notification Listener Service"
@@ -142,19 +149,19 @@ jobs:
           </manifest>
           EOF
 
-      # 9. Install dependencies
+      # 8. Get dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 10. Generate Hive adapters
+      # 9. Generate Hive adapters
       - name: Hive Build Runner
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
-      # 11. Replace launcher icon
+      # 10. Replace launcher icon
       - name: Replace launcher icon
         run: flutter pub run flutter_launcher_icons
 
-      # 12. Custom logo
+      # 11. Custom logo replace
       - name: Replace Flutter default icon
         run: |
           ICON_PATH="assets/logo.png"
@@ -163,11 +170,11 @@ jobs:
             cp $ICON_PATH $ANDROID_ICON_DIR/$density/ic_launcher.png
           done
 
-      # 13. Build APK
+      # 12. Build release APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 14. Upload artifact
+      # 13. Upload artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
