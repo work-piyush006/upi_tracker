@@ -31,17 +31,10 @@ jobs:
           rm -rf android
           flutter create --org com.expensetracker.app --project-name expense_tracker --platforms android .
 
-      # 5. Patch pubspec.yaml to use forked notification listener
+      # 5. Patch pubspec.yaml (force V2 embedding supported notification listener)
       - name: Patch pubspec.yaml
         run: |
-          sed -i '/flutter_notification_listener:/,+2d' pubspec.yaml || true
-          cat >> pubspec.yaml <<'EOF'
-      dependencies:
-        flutter_notification_listener:
-          git:
-            url: https://github.com/juliansteenbakker/flutter_notification_listener.git
-            ref: master
-      EOF
+          yq -i '.dependencies.flutter_notification_listener = {"git": {"url": "https://github.com/juliansteenbakker/flutter_notification_listener.git", "ref": "master"}}' pubspec.yaml
 
       # 6. Generate local.properties
       - name: Generate local.properties
@@ -60,31 +53,25 @@ jobs:
                   localProperties.load(reader)
               }
           }
-
           def flutterRoot = localProperties.getProperty('flutter.sdk')
           if (flutterRoot == null) {
               throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in local.properties.")
           }
-
           apply plugin: 'com.android.application'
           apply plugin: 'kotlin-android'
           apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
-
           android {
               namespace 'com.expensetracker.app'
               compileSdkVersion 34
-
               defaultConfig {
                   applicationId "com.expensetracker.app"
                   minSdkVersion 23
                   targetSdkVersion 34
                   versionCode 1
                   versionName "1.0"
-
                   multiDexEnabled true
                   testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
               }
-
               buildTypes {
                   release {
                       signingConfig signingConfigs.debug
@@ -93,18 +80,15 @@ jobs:
                       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                   }
               }
-
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_1_8
                   targetCompatibility JavaVersion.VERSION_1_8
                   coreLibraryDesugaringEnabled true
               }
-
               kotlinOptions {
                   jvmTarget = '1.8'
               }
           }
-
           dependencies {
               implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:\$kotlin_version"
               implementation 'androidx.core:core-ktx:1.12.0'
@@ -112,7 +96,6 @@ jobs:
               implementation 'com.google.android.material:material:1.12.0'
               implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
               implementation "androidx.multidex:multidex:2.0.1"
-
               coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
           }
           EOF
@@ -123,16 +106,13 @@ jobs:
           cat > android/app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android"
               package="com.expensetracker.app">
-
               <uses-permission android:name="android.permission.INTERNET"/>
               <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
               <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"/>
-
               <application
                   android:name="${applicationName}"
                   android:label="Expense Tracker"
                   android:icon="@mipmap/ic_launcher">
-
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
@@ -150,7 +130,6 @@ jobs:
                           <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
                   </activity>
-
                   <service
                       android:name="com.expensetracker.app.flutter_notification_listener.NotificationListenerService"
                       android:label="Notification Listener Service"
@@ -159,7 +138,6 @@ jobs:
                           <action android:name="android.service.notification.NotificationListenerService"/>
                       </intent-filter>
                   </service>
-
               </application>
           </manifest>
           EOF
