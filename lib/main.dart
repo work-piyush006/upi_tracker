@@ -41,6 +41,7 @@ class Transaction extends HiveObject {
   });
 }
 
+// ---------------- MAIN ----------------
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
@@ -49,7 +50,7 @@ void main() async {
   runApp(UPITrackerApp());
 }
 
-// ---------------- MAIN APP ----------------
+// ---------------- APP ----------------
 class UPITrackerApp extends StatefulWidget {
   @override
   _UPITrackerAppState createState() => _UPITrackerAppState();
@@ -146,7 +147,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-// ---------------- DASHBOARD WIDGET ----------------
+// ---------------- DASHBOARD ----------------
 class DashboardScreen extends StatefulWidget {
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
@@ -390,7 +391,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   MaterialPageRoute(
                       builder: (_) => SettingsScreen(
                           exportCSV: exportCSV, clearAll: clearAllTransactions)))),
-            ),
             ListTile(
               leading: Icon(Icons.info),
               title: Text('About'),
