@@ -178,15 +178,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     fetchLatestTransaction();
 
-    listener.notifications.addListener(() {
-      final notif = listener.notifications.value;
+    // ------------------- FIXED NOTIFICATION LISTENER -------------------
+    listener.addListener((notif) {
       if (notif != null) parseNotification(notif);
     });
+    listener.start();
   }
 
   @override
   void dispose() {
-    listener.notifications.dispose();
+    listener.stop();
     super.dispose();
   }
 
@@ -232,6 +233,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // ---------------- MANUAL TRANSACTION ----------------
   void addManualTransaction() {
     TextEditingController amountCtrl = TextEditingController();
     TextEditingController fromCtrl = TextEditingController();
@@ -315,6 +317,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // ---------------- EXPORT CSV ----------------
   Future<void> exportCSV() async {
     List<List<String>> rows = [
       ['UPI App', 'Amount', 'From', 'To', 'Message', 'Date']
