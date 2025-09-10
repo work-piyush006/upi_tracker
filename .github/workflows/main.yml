@@ -11,57 +11,57 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repository
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter
+      # 2️⃣ Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.13.8"
 
-      # 3. Disable Flutter Telemetry
+      # 3️⃣ Disable Flutter Telemetry
       - name: Disable Flutter Telemetry
         run: flutter --disable-telemetry
 
-      # 4. Force create Android folder every build
-      - name: Force create Android folder
+      # 4️⃣ Force create Android folder
+      - name: Generate Android folder
         run: |
           rm -rf android
           flutter create --org com.expensetracker.app --project-name expense_tracker --platforms android .
 
-      # 5. Install dependencies
-      - name: Flutter Pub Get
-        run: flutter pub get
-
-      # 6. Generate Hive adapters
-      - name: Hive Build Runner
-        run: flutter packages pub run build_runner build --delete-conflicting-outputs
-
-      # 7. Configure Android Manifest for notifications & listener
-      - name: Configure Android Manifest
+      # 5️⃣ Apply Android fixes (SDK version, desugaring, Manifest, listener)
+      - name: Configure Android build
         run: |
+          # 5a. Update SDK versions
+          sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 34/' android/app/build.gradle
+          sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 34/' android/app/build.gradle
+          sed -i 's/minSdkVersion [0-9]\+/minSdkVersion 23/' android/app/build.gradle
+          # 5b. Enable core library desugaring
+          sed -i '/compileOptions {/a \        coreLibraryDesugaringEnabled true' android/app/build.gradle
+          # 5c. Add Notification permission for Android 13+
           ANDROID_MANIFEST="android/app/src/main/AndroidManifest.xml"
-          # POST_NOTIFICATIONS permission for Android 13+
           grep -q "POST_NOTIFICATIONS" $ANDROID_MANIFEST || \
           sed -i '/<manifest /a <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' $ANDROID_MANIFEST
-          # Notification Listener Service
+          # 5d. Add Notification Listener Service
           grep -q "NotificationListener" $ANDROID_MANIFEST || \
           sed -i '/<application /a <service android:name="com.expensetracker.app.flutter_notification_listener.NotificationListenerService" android:label="Notification Listener Service" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"><intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter></service>' $ANDROID_MANIFEST
 
-      # 8. Set compileSdkVersion & minSdkVersion
-      - name: Set SDK Versions
-        run: |
-          sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 34/' android/app/build.gradle
-          sed -i 's/minSdkVersion [0-9]\+/minSdkVersion 23/' android/app/build.gradle
+      # 6️⃣ Install dependencies
+      - name: Flutter Pub Get
+        run: flutter pub get
 
-      # 9. Replace launcher icon using flutter_launcher_icons
+      # 7️⃣ Generate Hive adapters
+      - name: Hive Build Runner
+        run: flutter packages pub run build_runner build --delete-conflicting-outputs
+
+      # 8️⃣ Replace launcher icon using flutter_launcher_icons
       - name: Replace launcher icon
         run: flutter pub run flutter_launcher_icons:main
 
-      # 10. Replace Flutter default icon manually with assets/logo.png
-      - name: Replace Flutter default icon with custom logo
+      # 9️⃣ Replace Flutter default icon manually with assets/logo.png
+      - name: Replace default Flutter icon
         run: |
           ICON_PATH="assets/logo.png"
           ANDROID_ICON_DIR="android/app/src/main/res"
@@ -70,11 +70,11 @@ jobs:
           done
           echo "Custom logo replaced Flutter default icons."
 
-      # 11. Build release APK
+      # 🔟 Build release APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 12. Upload APK as artifact
+      # 1️⃣1️⃣ Upload APK as artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
