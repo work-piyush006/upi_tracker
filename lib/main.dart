@@ -147,11 +147,6 @@ class _SplashScreenState extends State<SplashScreen> {
 }
 
 // ---------------- DASHBOARD ----------------
-class DashboardScreen extends StatefulWidget {
-  @override
-  _DashboardScreenState createState() => _DashboardScreenState();
-}
-
 class _DashboardScreenState extends State<DashboardScreen> {
   Box<Transaction> box = Hive.box<Transaction>('transactions');
   Transaction? latestTransaction;
@@ -178,9 +173,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     fetchLatestTransaction();
 
     if (!kReleaseMode) {
-      listener.initialize();
-      listener.notificationStream.listen((notif) {
-        parseNotification(notif);
+      listener.notifications.addListener(() {
+        final notif = listener.notifications.value;
+        if (notif != null) parseNotification(notif);
       });
     }
   }
@@ -226,6 +221,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
   }
+
+  // ... baki ka code (manual transaction, export CSV, build UI) same rahega
+}
 
   void addManualTransaction() {
     TextEditingController amountCtrl = TextEditingController();
