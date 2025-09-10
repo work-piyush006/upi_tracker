@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Expense Tracker APK
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
       - name: Force create Android folder
         run: |
           rm -rf android
-          flutter create --org com.example --project-name offline_upi_tracker --platforms android .
+          flutter create --org com.expensetracker.app --project-name expense_tracker --platforms android .
 
       # 5. Install dependencies
       - name: Flutter Pub Get
@@ -48,11 +48,13 @@ jobs:
           sed -i '/<manifest /a <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' $ANDROID_MANIFEST
           # Notification Listener Service
           grep -q "NotificationListener" $ANDROID_MANIFEST || \
-          sed -i '/<application /a <service android:name="com.example.flutter_notification_listener.NotificationListenerService" android:label="Notification Listener Service" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"><intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter></service>' $ANDROID_MANIFEST
+          sed -i '/<application /a <service android:name="com.expensetracker.app.flutter_notification_listener.NotificationListenerService" android:label="Notification Listener Service" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"><intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter></service>' $ANDROID_MANIFEST
 
-      # 8. Set minSdkVersion >= 23
-      - name: Set minSdkVersion
-        run: sed -i 's/minSdkVersion [0-9]\+/minSdkVersion 23/' android/app/build.gradle
+      # 8. Set compileSdkVersion & minSdkVersion
+      - name: Set SDK Versions
+        run: |
+          sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 34/' android/app/build.gradle
+          sed -i 's/minSdkVersion [0-9]\+/minSdkVersion 23/' android/app/build.gradle
 
       # 9. Replace launcher icon using flutter_launcher_icons
       - name: Replace launcher icon
@@ -76,5 +78,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: offline_upi_tracker_apk
+          name: expense_tracker_apk
           path: build/app/outputs/flutter-apk/app-release.apk
