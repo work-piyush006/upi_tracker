@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter (with Dart 3.3)
+      # 2. Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -25,7 +25,7 @@ jobs:
       - name: Disable Flutter Telemetry
         run: flutter config --no-analytics --no-cli-animations
 
-      # 4. Create fresh android folder
+      # 4. Create fresh android folder (V2 embedding by default)
       - name: Create Android folder
         run: |
           rm -rf android
@@ -37,7 +37,7 @@ jobs:
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
           echo "flutter.sdk=$FLUTTER_HOME" >> android/local.properties
 
-      # 6. Patch project-level build.gradle with Kotlin + AGP
+      # 6. Patch root build.gradle
       - name: Patch root build.gradle
         run: |
           cat > android/build.gradle <<'EOF'
@@ -127,7 +127,7 @@ jobs:
           }
           EOF
 
-      # 8. Replace AndroidManifest.xml
+      # 8. Replace AndroidManifest.xml (V2 ready)
       - name: Replace AndroidManifest.xml
         run: |
           mkdir -p android/app/src/main
@@ -140,7 +140,6 @@ jobs:
               <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"/>
 
               <application
-                  android:name="${applicationName}"
                   android:label="Expense Tracker"
                   android:icon="@mipmap/ic_launcher">
 
@@ -173,15 +172,32 @@ jobs:
           </manifest>
           EOF
 
-      # 9. Get dependencies
+      # 9. Ensure MainActivity.kt (V2 embedding)
+      - name: Fix MainActivity for V2
+        run: |
+          mkdir -p android/app/src/main/kotlin/com/expensetracker/app
+          cat > android/app/src/main/kotlin/com/expensetracker/app/MainActivity.kt <<'EOF'
+          package com.expensetracker.app
+
+          import io.flutter.embedding.android.FlutterActivity
+
+          class MainActivity: FlutterActivity() {
+          }
+          EOF
+
+      # 10. Get dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 10. Generate Hive adapters
+      # 11. Generate Hive adapters
       - name: Hive Build Runner
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
-      # 12. Custom logo replace
+      # 12. Replace launcher icon
+      - name: Replace launcher icon
+        run: flutter pub run flutter_launcher_icons
+
+      # 13. Custom logo replace
       - name: Replace Flutter default icon
         run: |
           ICON_PATH="assets/logo.png"
@@ -190,11 +206,11 @@ jobs:
             cp $ICON_PATH $ANDROID_ICON_DIR/$density/ic_launcher.png
           done
 
-      # 13. Build release APK
+      # 14. Build release APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 14. Upload artifact
+      # 15. Upload artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
