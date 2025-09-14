@@ -27,12 +27,14 @@ jobs:
       - name: Create Android folder
         run: mkdir -p android/app/src/main
 
-      # 3a. Replace App Icon with assets/logo.png
+      # 3a. Replace app icon with assets/logo.png
       - name: Replace App Icon
         run: |
           ICON_SRC="assets/logo.png"
-          for DIR in android/app/src/main/res/mipmap-*; do
-            cp $ICON_SRC $DIR/ic_launcher.png
+          # Create all mipmap folders and copy icon
+          for DIR in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            mkdir -p android/app/src/main/res/mipmap-$DIR
+            cp $ICON_SRC android/app/src/main/res/mipmap-$DIR/ic_launcher.png
           done
 
       # 4. Generate local.properties
@@ -146,7 +148,7 @@ jobs:
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 10a. Flutter clean to remove old builds
+      # 10a. Flutter clean
       - name: Flutter Clean
         run: flutter clean
 
