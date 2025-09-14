@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter
+      # 2. Setup Flutter (with Dart 3.3)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -23,7 +23,7 @@ jobs:
 
       # 3. Disable telemetry
       - name: Disable Flutter Telemetry
-        run: flutter --disable-telemetry
+        run: flutter config --no-analytics --no-cli-animations
 
       # 4. Create fresh android folder
       - name: Create Android folder
@@ -37,7 +37,31 @@ jobs:
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
           echo "flutter.sdk=$FLUTTER_HOME" >> android/local.properties
 
-      # 6. Replace app/build.gradle
+      # 6. Patch project-level build.gradle with Kotlin + AGP
+      - name: Patch root build.gradle
+        run: |
+          cat > android/build.gradle <<'EOF'
+          buildscript {
+              ext.kotlin_version = '1.9.25'
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+                  classpath 'com.android.tools.build:gradle:8.3.2'
+              }
+          }
+
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          EOF
+
+      # 7. Replace app/build.gradle
       - name: Replace build.gradle
         run: |
           cat > android/app/build.gradle <<'EOF'
@@ -103,7 +127,7 @@ jobs:
           }
           EOF
 
-      # 7. Replace AndroidManifest.xml
+      # 8. Replace AndroidManifest.xml
       - name: Replace AndroidManifest.xml
         run: |
           mkdir -p android/app/src/main
@@ -149,19 +173,19 @@ jobs:
           </manifest>
           EOF
 
-      # 8. Get dependencies
+      # 9. Get dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 9. Generate Hive adapters
+      # 10. Generate Hive adapters
       - name: Hive Build Runner
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
-      # 10. Replace launcher icon
+      # 11. Replace launcher icon
       - name: Replace launcher icon
         run: flutter pub run flutter_launcher_icons
 
-      # 11. Custom logo replace
+      # 12. Custom logo replace
       - name: Replace Flutter default icon
         run: |
           ICON_PATH="assets/logo.png"
@@ -170,11 +194,11 @@ jobs:
             cp $ICON_PATH $ANDROID_ICON_DIR/$density/ic_launcher.png
           done
 
-      # 12. Build release APK
+      # 13. Build release APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 13. Upload artifact
+      # 14. Upload artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
