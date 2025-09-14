@@ -21,11 +21,19 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.3"   # Latest stable
+          flutter-version: "3.24.3"
 
       # 3. Create Android folder
       - name: Create Android folder
         run: mkdir -p android/app/src/main
+
+      # 3a. Replace App Icon with assets/logo.png
+      - name: Replace App Icon
+        run: |
+          ICON_SRC="assets/logo.png"
+          for DIR in android/app/src/main/res/mipmap-*; do
+            cp $ICON_SRC $DIR/ic_launcher.png
+          done
 
       # 4. Generate local.properties
       - name: Generate local.properties
@@ -138,13 +146,17 @@ jobs:
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 10. Build release APK
+      # 10a. Flutter clean to remove old builds
+      - name: Flutter Clean
+        run: flutter clean
+
+      # 10b. Build release APK
       - name: Build release APK
         run: flutter build apk --release --verbose
 
       # 11. Upload APK as artifact
       - name: Upload Release APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
