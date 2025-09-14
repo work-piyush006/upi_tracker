@@ -181,10 +181,6 @@ jobs:
       - name: Hive Build Runner
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
-      # 11. Replace launcher icon
-      - name: Replace launcher icon
-        run: flutter pub run flutter_launcher_icons
-
       # 12. Custom logo replace
       - name: Replace Flutter default icon
         run: |
