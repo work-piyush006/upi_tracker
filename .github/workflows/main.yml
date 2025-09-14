@@ -140,11 +140,11 @@ jobs:
 
       # 10. Build release APK
       - name: Build release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --verbose
 
-      # 11. Upload artifact
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+      # 11. Upload APK as artifact
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v3
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
